@@ -3,7 +3,7 @@
 import pickle
 from pathlib import Path
 
-from build_data.utils import build_data, split
+from utils.dataset import build_data, split
 
 
 data_path = './data/raw/'
