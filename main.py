@@ -137,14 +137,16 @@ def seq2oneHot(seq):# {{{
     return [mapping[c] for c in seq]
 # }}}
 
-def se_block(x, ratio=16):
+def se_block(x, ratio=0.2):
 
-    output_dim = x.shape[-1]
-    squeeze = tf.keras.layers.GlobalAveragePooling1D()(x)
+    output_dim = x.shape[-2]
+    squeeze = tf.keras.layers.GlobalAveragePooling1D(data_format='channels_first')(x)
 
     excitation = tf.keras.layers.Dense(units=output_dim // ratio, activation='relu')(squeeze)
     excitation = tf.keras.layers.Dense(units=output_dim, activation='sigmoid')(excitation)
-    scale = tf.keras.layers.Reshape((1, output_dim))(excitation)
+    excitation = tf.keras.layers.Dropout(0.4)(excitation)
+    excitation = tf.add(excitation, squeeze)
+    scale = tf.keras.layers.Reshape((output_dim, 1))(excitation)
     return tf.keras.layers.multiply([x, scale])
 
 
@@ -188,9 +190,12 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
 if '__main__' == __name__:
 
 
-    res = train_and_eval('base_cnn', save=False)
-    print(res)
-    exit()
+    # res = train_and_eval('base_cnn', save=False)
+    # print(res)
+    # exit()
+
+    # v1: base_cnn
+    # v2: base_cnn_drop0.4
     results = []
     for i in range(10):
         res = train_and_eval('base_cnn', i)
