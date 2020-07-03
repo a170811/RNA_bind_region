@@ -168,16 +168,18 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
     tr_y, va_y, te_y = np.array(tr_y, dtype=np.float32), np.array(va_y, dtype=np.float32), np.array(te_y, dtype=np.float32)
 
     # deep
-    model = build_model()
     if os.path.exists(model_path) and save:
         print(f'load model: `{model_name}` ...')
-        model.load_weights(model_path)
+        # model.load_weights(model_path)
+        model = tf.keras.models.load_model(model_path)
     else:
+        model = build_model()
         callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=2)
         model.fit(x=[tr_pi, tr_m], y=tr_y, validation_data=([va_pi, va_m], va_y),\
                   batch_size=512, epochs=1000, callbacks=[callback])
         if save:
-            model.save_weights(model_path)
+            model.save(model_path)
+            # model.save_weights(model_path)
 
     va_res = model.evaluate(x=[va_pi, va_m], y=va_y, return_dict=True)
     te_res = model.evaluate(x=[te_pi, te_m], y=te_y, return_dict=True)
@@ -195,10 +197,12 @@ if '__main__' == __name__:
     # exit()
 
     # v1: base_cnn
-    # v2: base_cnn_drop0.4
+    # v2: base_cnn_drop0.4 #2020/07/03
     results = []
-    for i in range(10):
-        res = train_and_eval('base_cnn', i)
+    for i in range(30):
+        res = train_and_eval('base_cnn_drop0.4', i)
         results.append(res)
-    print(pd.DataFrame(results))
+    res = pd.DataFrame(results)
+    print(res)
+    res.to_csv('results_30_times.csv', index=False)
 
