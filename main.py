@@ -41,6 +41,16 @@ def seq2oneHot(seq):# {{{
     return [mapping[c] for c in seq]
 # }}}
 
+def seq2label(seq):# {{{
+    mapping = {
+        'A': 0,
+        'T': 1,
+        'C': 2,
+        'G': 3,
+    }
+    return [mapping[c] for c in seq]
+# }}}
+
 
 def train_and_eval(model_name, seed=0, save=True):# {{{
 
@@ -51,12 +61,12 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
     x, y = build_data(path)
     tr_x, tr_y, va_x, va_y, te_x, te_y = split(x, y, seed=seed)
 
-    tr_pi = np.array([seq2oneHot(seq) for seq in tr_x[:, 0]], dtype=np.float32)
-    tr_m = np.array([seq2oneHot(seq) for seq in tr_x[:, 1]], dtype=np.float32)
-    va_pi = np.array([seq2oneHot(seq) for seq in va_x[:, 0]], dtype=np.float32)
-    va_m = np.array([seq2oneHot(seq) for seq in va_x[:, 1]], dtype=np.float32)
-    te_pi = np.array([seq2oneHot(seq) for seq in te_x[:, 0]], dtype=np.float32)
-    te_m = np.array([seq2oneHot(seq) for seq in te_x[:, 1]], dtype=np.float32)
+    tr_pi = np.array([seq2label(seq) for seq in tr_x[:, 0]], dtype=np.float32)
+    tr_m = np.array([seq2label(seq) for seq in tr_x[:, 1]], dtype=np.float32)
+    va_pi = np.array([seq2label(seq) for seq in va_x[:, 0]], dtype=np.float32)
+    va_m = np.array([seq2label(seq) for seq in va_x[:, 1]], dtype=np.float32)
+    te_pi = np.array([seq2label(seq) for seq in te_x[:, 0]], dtype=np.float32)
+    te_m = np.array([seq2label(seq) for seq in te_x[:, 1]], dtype=np.float32)
     tr_y, va_y, te_y = np.array(tr_y, dtype=np.float32), np.array(va_y, dtype=np.float32), np.array(te_y, dtype=np.float32)
 
     # deep

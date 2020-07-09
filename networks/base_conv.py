@@ -32,10 +32,11 @@ def build_conv_block(shape):# {{{
     return model
 # }}}
 
-def build_base():# {{{
+def build_base(embed_dim = 4):# {{{
 
-    inputs_pi = tf.keras.layers.Input(shape=(21, 4))
-    inputs_m = tf.keras.layers.Input(shape=(31, 4))
+    inputs_pi = tf.keras.layers.Input(shape=(21,))
+    inputs_m = tf.keras.layers.Input(shape=(31,))
+    embedding = tf.keras.layers.Embedding(input_dim=4, output_dim=embed_dim)
 
     # merge_input = tf.concat([inputs_pi, inputs_m], axis=1)
     # x = tf.keras.layers.Conv1D(64, 3, padding='same', activation='relu')(merge_input)
@@ -48,8 +49,9 @@ def build_base():# {{{
     # x = tf.keras.layers.Multiply()([x, se])
     # merge_part = tf.keras.layers.GlobalAveragePooling1D()(x)
 
-    pi_part = build_conv_block(shape=(21, 4))(inputs_pi)
-    m_part = build_conv_block(shape=(31, 4))(inputs_m)
+    pi_part = build_conv_block(shape=(21, embed_dim))(embedding(inputs_pi))
+    m_part = build_conv_block(shape=(31, embed_dim))(embedding(inputs_m))
+
     merge = tf.concat([pi_part, m_part], axis=1)
     # merge = tf.add(pi_part, m_part)
     x = tf.keras.layers.BatchNormalization()(merge)
