@@ -1,24 +1,24 @@
 import tensorflow as tf
 
 
-def build_conv_block(shape):# {{{
+def build_conv_block(shape, gap=True):# {{{
 
     inputs = tf.keras.layers.Input(shape=shape)
-    x = tf.keras.layers.Conv1D(16, 5, padding='same', activation='linear', kernel_initializer='he_normal')(inputs)
+    x = tf.keras.layers.Conv1D(16, 3, padding='same', activation='linear', kernel_initializer='he_normal')(inputs)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv1D(32, 5, padding='same', activation='linear', kernel_initializer='he_normal')(x)
+    x = tf.keras.layers.Conv1D(32, 3, padding='same', activation='linear', kernel_initializer='he_normal')(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv1D(32, 5, padding='same', activation='linear', kernel_initializer='he_normal')(x)
+    x = tf.keras.layers.Conv1D(64, 3, padding='same', activation='linear', kernel_initializer='he_normal')(x)
     root = tf.keras.layers.BatchNormalization()(x)
 
     # block1
-    x = tf.keras.layers.Conv1D(64, 1, padding='same', kernel_initializer='he_normal')(root)
+    x = tf.keras.layers.Conv1D(16, 1, padding='same', kernel_initializer='he_normal')(root)
     x1 = tf.keras.layers.Conv1D(128, 3, padding='same', kernel_initializer='he_normal')(x)
     # block2
-    x = tf.keras.layers.Conv1D(64, 1, padding='same', kernel_initializer='he_normal')(root)
+    x = tf.keras.layers.Conv1D(16, 1, padding='same', kernel_initializer='he_normal')(root)
     x2 = tf.keras.layers.Conv1D(128, 5, padding='same', kernel_initializer='he_normal')(x)
     # block3
-    x = tf.keras.layers.Conv1D(64, 1, padding='same', kernel_initializer='he_normal')(root)
+    x = tf.keras.layers.Conv1D(16, 1, padding='same', kernel_initializer='he_normal')(root)
     x3 = tf.keras.layers.Conv1D(128, 7, padding='same', kernel_initializer='he_normal')(x)
 
     ori = tf.keras.layers.Conv1D(128, 1, padding='same', kernel_initializer='he_normal')(root)
@@ -26,7 +26,8 @@ def build_conv_block(shape):# {{{
     x = tf.keras.layers.Add()([ori, x1, x2, x3])
     x = tf.keras.layers.Conv1D(128, 3, padding='same', activation='relu', kernel_initializer='he_normal')(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    if gap:
+        x = tf.keras.layers.GlobalAveragePooling1D()(x)
     model = tf.keras.Model(inputs=inputs, outputs=x)
     model.summary()
     return model

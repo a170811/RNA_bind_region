@@ -10,6 +10,7 @@ import tensorflow as tf
 from utils.dataset import build_data, split
 from metrics import *
 from networks.base_conv import build_base
+from networks.transformer import build_transformer_base
 
 
 accuracy = tf.keras.metrics.BinaryAccuracy(name='acc')
@@ -19,6 +20,13 @@ specificity = Specificity()
 f1 = F1_score()
 auc = tf.keras.metrics.AUC()
 mcc = MCC()
+
+
+def learning_rate_scheduler(epoch):
+    if epoch < 10:
+        return 0.001
+    else:
+        return 0.001 * 0.1 ** (epoch/10)
 
 
 def ontHot2seq(onehots):# {{{
@@ -51,7 +59,6 @@ def seq2label(seq):# {{{
     return [mapping[c] for c in seq]
 # }}}
 
-
 def train_and_eval(model_name, seed=0, save=True):# {{{
 
     path = './data/raw'
@@ -79,11 +86,13 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
         }, compile=False)
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[accuracy, precision, recall, specificity, f1, auc, mcc])
     else:
-        model = build_base()
+        # model = build_base()
+        model = build_transformer_base()
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[accuracy, precision, recall, specificity, f1, auc, mcc])
-        callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=2)
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+        scheduler = tf.keras.callbacks.LearningRateScheduler(learning_rate_scheduler)
         model.fit(x=[tr_pi, tr_m], y=tr_y, validation_data=([va_pi, va_m], va_y),\
-                  batch_size=512, epochs=1000, callbacks=[callback])
+                  batch_size=512, epochs=1000, callbacks=[early_stop, scheduler])
         if save:
             model.save(model_path)
 
@@ -98,17 +107,18 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
 if '__main__' == __name__:
 
 
-    res = train_and_eval('test', save=False)
-    print(res)
-    exit()
+    # res = train_and_eval('test', save=False)
+    # print(res)
+    # exit()
 
     # v1: base_cnn
     # v2: base_cnn_drop0.4 #2020/07/03
+    # v2: base_transformer #2020/07/09
     results = []
     for i in range(30):
-        res = train_and_eval('base_cnn_drop0.4', i)
+        res = train_and_eval('base_transformer', i)
         results.append(res)
     res = pd.DataFrame(results)
     print(res)
-    res.to_csv('results_30_times.csv', index=False)
+    res.to_csv('./outputs/transformer_30_times.csv', index=False)
 

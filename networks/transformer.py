@@ -2,7 +2,10 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-class MultiHeadSelfAttention(layers.Layer):
+from .base_conv import build_conv_block
+
+
+class MultiHeadSelfAttention(layers.Layer):# {{{
     def __init__(self, embed_dim, num_heads=8):
         super(MultiHeadSelfAttention, self).__init__()
         self.embed_dim = embed_dim
@@ -55,9 +58,9 @@ class MultiHeadSelfAttention(layers.Layer):
             concat_attention
         )  # (batch_size, seq_len, embed_dim)
         return output
+# }}}
 
-
-class TransformerBlock(layers.Layer):
+class TransformerBlock(layers.Layer):# {{{
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
         super(TransformerBlock, self).__init__()
         self.att = MultiHeadSelfAttention(embed_dim, num_heads)
@@ -76,9 +79,9 @@ class TransformerBlock(layers.Layer):
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
+# }}}
 
-
-class TokenAndPositionEmbedding(layers.Layer):
+class TokenAndPositionEmbedding(layers.Layer):# {{{
     def __init__(self, maxlen, vocab_size, embed_dim):
         super(TokenAndPositionEmbedding, self).__init__()
         self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
@@ -90,6 +93,36 @@ class TokenAndPositionEmbedding(layers.Layer):
         positions = self.pos_emb(positions)
         x = self.token_emb(x)
         return x + positions
+# }}}
+
+def build_transformer_base():
+
+    embed_dim = 4
+    num_heads = 4  # Number of attention heads
+    ff_dim = 32  # Hidden layer size in feed forward network inside transformer
+    vocab_size = 4 # A, T, C, G
+
+    inputs_pi = tf.keras.layers.Input(shape=(21,))
+    inputs_m = tf.keras.layers.Input(shape=(31,))
+
+    # embedding = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
+    embedding_pi = TokenAndPositionEmbedding(21, vocab_size, embed_dim)
+    embedding_m = TokenAndPositionEmbedding(31, vocab_size, embed_dim)
+
+    pi = build_conv_block(shape=(21, embed_dim), gap=False)(embedding_pi(inputs_pi))
+    m = build_conv_block(shape=(31, embed_dim), gap=False)(embedding_m(inputs_m))
+    merge_input = tf.concat([pi, m], axis=1)
+
+    transformer_block = TransformerBlock(128, num_heads, ff_dim)
+    x = transformer_block(merge_input)
+    x = transformer_block(x)
+    x = layers.GlobalAveragePooling1D()(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Dense(1, activation="sigmoid")(x)
+
+    model = tf.keras.Model(inputs=[inputs_pi, inputs_m], outputs=x)
+    model.summary()
+    return model
 
 if '__main__' == __name__:
 
