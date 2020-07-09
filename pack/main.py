@@ -103,8 +103,9 @@ if '__main__' == __name__:
         }, compile=False)
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[accuracy, precision, recall, specificity, f1, auc, mcc])
 
-        te_res = model.evaluate(x=[te_pi, te_m], y=te_y, return_dict=True)
-        result = pd.DataFrame(te_res, index=['te'])
+        result = model.predict([te_pi, te_m]).flatten()
+        result = np.where(result >= 0.5, 1, 0)
+        result = pd.DataFrame(result, columns=['label'])
     else:
         print('mode missing')
         exit()
