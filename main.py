@@ -9,6 +9,7 @@ import tensorflow as tf
 
 from utils.dataset import build_data, split
 from metrics import *
+from networks.base_conv import build_base
 
 
 accuracy = tf.keras.metrics.BinaryAccuracy(name='acc')
@@ -19,73 +20,6 @@ f1 = F1_score()
 auc = tf.keras.metrics.AUC()
 mcc = MCC()
 
-
-def build_conv_block(shape):# {{{
-
-    inputs = tf.keras.layers.Input(shape=shape)
-    x = tf.keras.layers.Conv1D(16, 5, padding='same', activation='linear', kernel_initializer='he_normal')(inputs)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv1D(32, 5, padding='same', activation='linear', kernel_initializer='he_normal')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv1D(32, 5, padding='same', activation='linear', kernel_initializer='he_normal')(x)
-    root = tf.keras.layers.BatchNormalization()(x)
-
-    # block1
-    x = tf.keras.layers.Conv1D(64, 1, padding='same', kernel_initializer='he_normal')(root)
-    x1 = tf.keras.layers.Conv1D(128, 3, padding='same', kernel_initializer='he_normal')(x)
-    # block2
-    x = tf.keras.layers.Conv1D(64, 1, padding='same', kernel_initializer='he_normal')(root)
-    x2 = tf.keras.layers.Conv1D(128, 5, padding='same', kernel_initializer='he_normal')(x)
-    # block3
-    x = tf.keras.layers.Conv1D(64, 1, padding='same', kernel_initializer='he_normal')(root)
-    x3 = tf.keras.layers.Conv1D(128, 7, padding='same', kernel_initializer='he_normal')(x)
-
-    ori = tf.keras.layers.Conv1D(128, 1, padding='same', kernel_initializer='he_normal')(root)
-
-    x = tf.keras.layers.Add()([ori, x1, x2, x3])
-    x = tf.keras.layers.Conv1D(128, 3, padding='same', activation='relu', kernel_initializer='he_normal')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.GlobalAveragePooling1D()(x)
-    model = tf.keras.Model(inputs=inputs, outputs=x)
-    model.summary()
-    return model
-# }}}
-
-def build_model():# {{{
-
-    inputs_pi = tf.keras.layers.Input(shape=(21, 4))
-    inputs_m = tf.keras.layers.Input(shape=(31, 4))
-
-    # merge_input = tf.concat([inputs_pi, inputs_m], axis=1)
-    # x = tf.keras.layers.Conv1D(64, 3, padding='same', activation='relu')(merge_input)
-    # se = tf.keras.layers.GlobalAveragePooling1D()(x)
-    # se = tf.keras.layers.Dense(64, activation='relu')(se)
-    # x = tf.keras.layers.Multiply()([x, se])
-    # x = tf.keras.layers.Conv1D(128, 3, padding='same', activation='relu')(x)
-    # se = tf.keras.layers.GlobalAveragePooling1D()(x)
-    # se = tf.keras.layers.Dense(128, activation='relu')(se)
-    # x = tf.keras.layers.Multiply()([x, se])
-    # merge_part = tf.keras.layers.GlobalAveragePooling1D()(x)
-
-    pi_part = build_conv_block(shape=(21, 4))(inputs_pi)
-    m_part = build_conv_block(shape=(31, 4))(inputs_m)
-    merge = tf.concat([pi_part, m_part], axis=1)
-    # merge = tf.add(pi_part, m_part)
-    x = tf.keras.layers.BatchNormalization()(merge)
-    x = tf.keras.layers.Dense(128, activation='relu', kernel_initializer='he_normal')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Dropout(0.4)(x)
-    x = tf.keras.layers.Dense(64, activation='relu', kernel_initializer='he_normal')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Dropout(0.4)(x)
-    x = tf.keras.layers.Dense(32, activation='relu', kernel_initializer='he_normal')(x)
-    x = tf.keras.layers.Dropout(0.4)(x)
-    x = tf.keras.layers.Dense(1, activation='sigmoid')(x)
-    model = tf.keras.Model(inputs=[inputs_pi, inputs_m], outputs=x)
-    model.summary()
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[accuracy, precision, recall, specificity, f1, auc, mcc])
-    return model
-# }}}
 
 def ontHot2seq(onehots):# {{{
     inverse_mapping = {
@@ -106,18 +40,6 @@ def seq2oneHot(seq):# {{{
     }
     return [mapping[c] for c in seq]
 # }}}
-
-def se_block(x, ratio=0.2):
-
-    output_dim = x.shape[-2]
-    squeeze = tf.keras.layers.GlobalAveragePooling1D(data_format='channels_first')(x)
-
-    excitation = tf.keras.layers.Dense(units=output_dim // ratio, activation='relu')(squeeze)
-    excitation = tf.keras.layers.Dense(units=output_dim, activation='sigmoid')(excitation)
-    excitation = tf.keras.layers.Dropout(0.4)(excitation)
-    excitation = tf.add(excitation, squeeze)
-    scale = tf.keras.layers.Reshape((output_dim, 1))(excitation)
-    return tf.keras.layers.multiply([x, scale])
 
 
 def train_and_eval(model_name, seed=0, save=True):# {{{
@@ -140,7 +62,6 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
     # deep
     if os.path.exists(model_path) and save:
         print(f'load model: `{model_name}` ...')
-        # model.load_weights(model_path)
         model = tf.keras.models.load_model(model_path, custom_objects={
             'f1': F1_score,
             'specificity': Specificity,
@@ -148,13 +69,13 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
         }, compile=False)
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[accuracy, precision, recall, specificity, f1, auc, mcc])
     else:
-        model = build_model()
+        model = build_base()
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[accuracy, precision, recall, specificity, f1, auc, mcc])
         callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=2)
         model.fit(x=[tr_pi, tr_m], y=tr_y, validation_data=([va_pi, va_m], va_y),\
                   batch_size=512, epochs=1000, callbacks=[callback])
         if save:
             model.save(model_path)
-            # model.save_weights(model_path)
 
     va_res = model.evaluate(x=[va_pi, va_m], y=va_y, return_dict=True)
     te_res = model.evaluate(x=[te_pi, te_m], y=te_y, return_dict=True)
@@ -167,9 +88,9 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
 if '__main__' == __name__:
 
 
-    # res = train_and_eval('test', save=True)
-    # print(res)
-    # exit()
+    res = train_and_eval('test', save=False)
+    print(res)
+    exit()
 
     # v1: base_cnn
     # v2: base_cnn_drop0.4 #2020/07/03
