@@ -38,7 +38,7 @@ graphviz==0.13.2
 greenlet==0.4.12
 grpcio==1.30.0
 h5py==2.10.0
-httplib2==0.9.2
+httplib2==0.18.0
 hyperlink==17.3.1
 idna==2.6
 imageio==2.8.0
