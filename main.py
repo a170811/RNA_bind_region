@@ -11,6 +11,7 @@ from utils.dataset import build_data, split
 from metrics import *
 from networks.base_conv import build_base
 from networks.transformer import build_transformer_base
+from networks.transformer import MultiHeadSelfAttention, TransformerBlock, TokenAndPositionEmbedding
 
 
 accuracy = tf.keras.metrics.BinaryAccuracy(name='acc')
@@ -83,6 +84,9 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
             'f1': F1_score,
             'specificity': Specificity,
             'mcc': MCC,
+            'MultiHeadSelfAttention': MultiHeadSelfAttention,
+            'TransformerBlock': TransformerBlock,
+            'TokenAndPositionEmbedding': TokenAndPositionEmbedding,
         }, compile=False)
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[accuracy, precision, recall, specificity, f1, auc, mcc])
     else:
@@ -107,7 +111,7 @@ def train_and_eval(model_name, seed=0, save=True):# {{{
 if '__main__' == __name__:
 
 
-    # res = train_and_eval('test', save=False)
+    # res = train_and_eval('test_transformer', save=False)
     # print(res)
     # exit()
 

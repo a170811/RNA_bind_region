@@ -19,6 +19,10 @@ class MultiHeadSelfAttention(layers.Layer):# {{{
         self.key_dense = layers.Dense(embed_dim)
         self.value_dense = layers.Dense(embed_dim)
         self.combine_heads = layers.Dense(embed_dim)
+        self.config = {
+            'embed_dim': embed_dim,
+            'num_heads': num_heads,
+        }
 
     def attention(self, query, key, value):
         score = tf.matmul(query, key, transpose_b=True)
@@ -58,6 +62,9 @@ class MultiHeadSelfAttention(layers.Layer):# {{{
             concat_attention
         )  # (batch_size, seq_len, embed_dim)
         return output
+
+    def get_config(self):
+        return self.config
 # }}}
 
 class TransformerBlock(layers.Layer):# {{{
@@ -71,6 +78,12 @@ class TransformerBlock(layers.Layer):# {{{
         self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
         self.dropout1 = layers.Dropout(rate)
         self.dropout2 = layers.Dropout(rate)
+        self.config = {
+            'embed_dim': embed_dim,
+            'num_heads': num_heads,
+            'ff_dim': ff_dim,
+            'rate': rate,
+        }
 
     def call(self, inputs, training):
         attn_output = self.att(inputs)
@@ -79,6 +92,9 @@ class TransformerBlock(layers.Layer):# {{{
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
+
+    def get_config(self):
+        return self.config
 # }}}
 
 class TokenAndPositionEmbedding(layers.Layer):# {{{
@@ -86,6 +102,11 @@ class TokenAndPositionEmbedding(layers.Layer):# {{{
         super(TokenAndPositionEmbedding, self).__init__()
         self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
         self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
+        self.config = {
+            'maxlen': maxlen,
+            'vocab_size': vocab_size,
+            'embed_dim': embed_dim,
+        }
 
     def call(self, x):
         maxlen = tf.shape(x)[-1]
@@ -93,6 +114,9 @@ class TokenAndPositionEmbedding(layers.Layer):# {{{
         positions = self.pos_emb(positions)
         x = self.token_emb(x)
         return x + positions
+
+    def get_config(self):
+        return self.config
 # }}}
 
 def build_transformer_base():
