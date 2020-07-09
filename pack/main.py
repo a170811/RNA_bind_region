@@ -79,9 +79,19 @@ if '__main__' == __name__:
                   batch_size=512, epochs=1000, callbacks=[early_stop, scheduler])
         model.save(f'{output_path}/model.h5')
 
-        va_res = model.evaluate(x=[va_pi, va_m], y=va_y, return_dict=True)
-        te_res = model.evaluate(x=[te_pi, te_m], y=te_y, return_dict=True)
-        result = pd.DataFrame({k: [va_res[k], te_res[k]] for k in va_res.keys()}, index=['va', 'te'])
+        # va_res = model.evaluate(x=[va_pi, va_m], y=va_y, return_dict=True)
+        # te_res = model.evaluate(x=[te_pi, te_m], y=te_y, return_dict=True)
+        # result = pd.DataFrame({k: [va_res[k], te_res[k]] for k in va_res.keys()}, index=['va', 'te'])
+        result_va = model.predict([va_pi, va_m]).flatten()
+        result_va = np.where(result_va >= 0.5, 1, 0)
+        result_va = pd.DataFrame(result_va, columns=['label'])
+        result_te = model.predict([te_pi, te_m]).flatten()
+        result_te = np.where(result_te >= 0.5, 1, 0)
+        result_te = pd.DataFrame(result_te, columns=['label'])
+        print(result_va)
+        print(result_te)
+        result_va.to_csv(f'{output_path}/results_va.csv', index=False)
+        result_te.to_csv(f'{output_path}/results_te.csv', index=False)
 
     elif 'test' == args.mode:
         assert args.model, 'model name missing'
@@ -106,9 +116,9 @@ if '__main__' == __name__:
         result = model.predict([te_pi, te_m]).flatten()
         result = np.where(result >= 0.5, 1, 0)
         result = pd.DataFrame(result, columns=['label'])
+        print(result)
+        result.to_csv(f'{output_path}/results.csv', index=False)
     else:
         print('mode missing')
         exit()
 
-    print(result)
-    result.to_csv(f'{output_path}/results.csv', index=False)
